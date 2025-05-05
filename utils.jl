@@ -1,6 +1,6 @@
 module Utils
 
-export Type, Value, Name, setTypes, setVars, setFuncs, getCombinations, intersperse, substitute!, getComboName
+export Type, Value, Name, setTypes, setVars, setFuncs, getCombinations, intersperse, add_whitespace, substitute!, getComboName
 
 import ..Types as TP
 
@@ -76,7 +76,26 @@ function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}
 end
 
 function intersperse(a::Array{T}, e::T) where T
-    return vcat(collect(Iterators.flatmap(x -> [x, e], a[begin:end-1])), a[end])
+    return vcat(collect(Iterators.flatmap(x -> T[x, e], a[begin:end-1])), a[end])::Array{T}
+end
+
+function add_whitespace(p::TP.Program)
+    for part in p.parts
+        if typeof(part) == TP.Parens
+            add_whitespace(part)
+        end
+    end
+    p.parts = intersperse(p.parts, TP.WhiteSpace("\n\n"))
+    return p
+end
+
+function add_whitespace(p::TP.Parens)
+    for part in p.parts
+        if typeof(part) == TP.Parens
+            add_whitespace(part)
+        end
+    end
+    p.parts = vcat([TP.WhiteSpace(" ")], intersperse(p.parts, TP.WhiteSpace(" ")))
 end
 
 function substitute!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})

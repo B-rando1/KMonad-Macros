@@ -101,18 +101,22 @@ while i <= length(p.parts)
 end
 
 # Add whitespace back to the program
-p_out = TP.Program(TP.Component[])
-for part in p.parts[begin:end-1]
-    push!(p_out.parts, part)
-    if typeof(part) == TP.Parens
-        push!(p_out.parts, TP.WhiteSpace("\n\n"))
-    else
-        push!(p_out.parts, TP.WhiteSpace("\n"))
-    end
-end
-push!(p_out.parts, p.parts[end])
+U.add_whitespace(p)
+
+# p_out = TP.Program(TP.Component[])
+
+
+# for part in p.parts[begin:end-1]
+#     push!(p_out.parts, part)
+#     if typeof(part) == TP.Parens
+#         push!(p_out.parts, TP.WhiteSpace("\n\n"))
+#     else
+#         push!(p_out.parts, TP.WhiteSpace("\n"))
+#     end
+# end
+# push!(p_out.parts, p.parts[end])
 
 #  Write out file contents
 open("keymap_test_output.kbd", "w") do file_handle
-    show(file_handle, p_out)
+    show(file_handle, p)
 end

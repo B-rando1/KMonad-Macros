@@ -17,7 +17,7 @@ debug = false
 
 abstract type Component end
 
-struct Program
+mutable struct Program
     parts :: AbstractArray{<:Component}
 end
 
@@ -60,7 +60,7 @@ function Base.show(io::IO, p::Parens)
     for part in p.parts
         print(io, part)
     end
-    print(io, ") ")
+    print(io, ")")
 end
 
 mutable struct Text<:Component
@@ -69,7 +69,7 @@ end
 
 function Base.show(io::IO, c::Text)
     if debug print(io, "Text (") end
-    print(io, c.text * " ")
+    print(io, c.text)
     if debug println(io, ")") end
 end
 
