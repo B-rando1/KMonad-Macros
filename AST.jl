@@ -13,9 +13,7 @@ function program(s::AbstractString)
 
     while !isnothing(SC.sym)
         if typeof(SC.sym) == SC.WhiteSpace
-            # push!(parts, TP.WhiteSpace(SC.sym.contents))
         elseif typeof(SC.sym) == SC.Comment
-            # push!(parts, TP.Comment(SC.sym.contents))
         elseif typeof(SC.sym) == SC.LParen
             push!(parts, parens())
         else
@@ -29,6 +27,7 @@ end
 
 function parens()
     parts = TP.Component[]
+    prevPart = nothing
 
     SC.getSym()
     if typeof(SC.sym) != SC.Text
@@ -39,13 +38,17 @@ function parens()
 
     while !isnothing(SC.sym) && typeof(SC.sym) != SC.RParen
         if typeof(SC.sym) == SC.WhiteSpace
-            # push!(parts, TP.WhiteSpace(SC.sym.contents))
+            if !isnothing(prevPart)
+                prevPart.after = TP.WhiteSpace(SC.sym.contents)
+                prevPart = nothing
+            end
         elseif typeof(SC.sym) == SC.Comment
-            # push!(parts, TP.Comment(SC.sym.contents))
         elseif typeof(SC.sym) == SC.Text
-            push!(parts, TP.Text(SC.sym.text))
+            prevPart = TP.Text(SC.sym.text)
+            push!(parts, prevPart)
         elseif typeof(SC.sym) == SC.LParen
-            push!(parts, parens())
+            prevPart = parens()
+            push!(parts, prevPart)
         else
             SC.mark("Unexpected symbol")
         end

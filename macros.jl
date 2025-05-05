@@ -101,20 +101,8 @@ while i <= length(p.parts)
 end
 
 # Add whitespace back to the program
-U.add_whitespace(p)
-
-# p_out = TP.Program(TP.Component[])
-
-
-# for part in p.parts[begin:end-1]
-#     push!(p_out.parts, part)
-#     if typeof(part) == TP.Parens
-#         push!(p_out.parts, TP.WhiteSpace("\n\n"))
-#     else
-#         push!(p_out.parts, TP.WhiteSpace("\n"))
-#     end
-# end
-# push!(p_out.parts, p.parts[end])
+p.parts = U.intersperse(p.parts, TP.WhiteSpace("\n\n"))
+push!(p.parts, TP.WhiteSpace("\n"))
 
 #  Write out file contents
 open("keymap_test_output.kbd", "w") do file_handle

@@ -52,6 +52,10 @@ end
 mutable struct Parens<:Component
     name :: AbstractString
     parts :: AbstractArray{<:Component}
+    after :: Union{WhiteSpace, Nothing}
+end
+function Parens(name::AbstractString, parts::AbstractArray{<:Component})
+    return Parens(name, parts, nothing)
 end
 
 function Base.show(io::IO, p::Parens)
@@ -61,15 +65,25 @@ function Base.show(io::IO, p::Parens)
         print(io, part)
     end
     print(io, ")")
+    if !isnothing(p.after)
+        print(io, p.after)
+    end
 end
 
 mutable struct Text<:Component
     text :: AbstractString
+    after :: Union{WhiteSpace, Nothing}
+end
+function Text(text::AbstractString)
+    return Text(text, nothing)
 end
 
 function Base.show(io::IO, c::Text)
     if debug print(io, "Text (") end
     print(io, c.text)
+    if !isnothing(c.after)
+        print(io, c.after)
+    end
     if debug println(io, ")") end
 end
 
