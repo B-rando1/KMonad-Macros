@@ -61,20 +61,6 @@ function setFuncs(parens::TP.Parens)
     return funcs
 end
 
-function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
-    if length(varOrder) == 0
-        return [[]]
-    end
-    if length(varOrder) == 1
-        var = varOrder[1]
-        return [[val] for val in types[vars[var]]]
-    end
-    currCombos = getCombinations(types, vars, [varOrder[1]])
-    nextCombos = getCombinations(types, vars, varOrder[2:end])
-
-    return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
-end
-
 function intersperse(a::Array{T}, e::T) where T
     return vcat(collect(Iterators.flatmap(x -> T[x, e], a[begin:end-1])), a[end])::Array{T}
 end
@@ -90,14 +76,43 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
                 subPart.text = combo[varIdx]
             elseif haskey(funcs, subPart.text)
                 subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
+            elseif startswith(subPart.text, '@')
+                subPart.text = getComboName(subPart.text, combo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_layer_rec!(subPart, combo, varOrder, funcs)
+            sub_parens!(subPart, combo, varOrder, funcs)
         end
     end
 end
 
-function sub_layer_rec!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+    i, j = 1, 2
+    while j <= length(part.parts)
+        name = part.parts[i]
+        alias = part.parts[j]
+        deleteat!(part.parts, i)
+        deleteat!(part.parts, i)
+        
+        # TODO: only make multiple copies if alias refers to variables or layers
+        # This would be a lot of work, since then everything referring to an alias would need to know if the alias is parameterized
+        # What might work is processing all the aliases before all the layers
+
+        for combo in combos
+            newName = TP.Text(getComboName(name.text, combo), name.after)
+            insert!(part.parts, i, newName)
+            newAlias = deepcopy(alias)
+            newAlias.after = TP.WhiteSpace("\n  ")
+            if typeof(newAlias) == TP.Parens
+                sub_parens!(newAlias, combo, varOrder, funcs)
+            end
+            insert!(part.parts, j, newAlias)
+            i += 2; j += 2
+        end
+        part.parts[end].after = TP.WhiteSpace("\n")
+    end
+end
+
+function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
         return
@@ -109,15 +124,28 @@ function sub_layer_rec!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Na
                 subPart.text = combo[varIdx]
             elseif haskey(funcs, subPart.text)
                 subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
+            elseif startswith(subPart.text, '@')
+                subPart.text = getComboName(subPart.text, combo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_layer_rec!(subPart, combo, varOrder, funcs)
+            sub_parens!(subPart, combo, varOrder, funcs)
         end
     end
 end
 
-function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
+    #TODO: take in functions too in order to only return combinations that can be reached
+    if length(varOrder) == 0
+        return [[]]
+    end
+    if length(varOrder) == 1
+        var = varOrder[1]
+        return [[val] for val in types[vars[var]]]
+    end
+    currCombos = getCombinations(types, vars, [varOrder[1]])
+    nextCombos = getCombinations(types, vars, varOrder[2:end])
 
+    return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
 
 function getComboName(baseName::Name, combo::Array{String})
