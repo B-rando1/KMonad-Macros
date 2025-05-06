@@ -1,6 +1,6 @@
 module Utils
 
-export Type, Value, Name, setTypes, setVars, setFuncs, getCombinations, intersperse, substitute!, getComboName
+export Type, Value, Name, setTypes, setVars, setFuncs, getCombinations, intersperse, sub_layer!, sub_alias!, getComboName
 
 import ..Types as TP
 
@@ -61,7 +61,7 @@ function setFuncs(parens::TP.Parens)
     return funcs
 end
 
-function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})
+function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
     if length(varOrder) == 0
         return [[]]
     end
@@ -79,7 +79,7 @@ function intersperse(a::Array{T}, e::T) where T
     return vcat(collect(Iterators.flatmap(x -> T[x, e], a[begin:end-1])), a[end])::Array{T}
 end
 
-function substitute!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     baseName = part.parts[1].text
     # Rename part
     part.parts[1].text = getComboName(baseName, combo)
@@ -92,12 +92,12 @@ function substitute!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
                 subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
             end
         elseif typeof(subPart) == TP.Parens
-            substitute_rec!(subPart, combo, varOrder, funcs)
+            sub_layer_rec!(subPart, combo, varOrder, funcs)
         end
     end
 end
 
-function substitute_rec!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_layer_rec!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
         return
@@ -111,9 +111,13 @@ function substitute_rec!(part::TP.Parens, combo::Array{Value}, varOrder::Array{N
                 subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
             end
         elseif typeof(subPart) == TP.Parens
-            substitute_rec!(subPart, combo, varOrder, funcs)
+            sub_layer_rec!(subPart, combo, varOrder, funcs)
         end
     end
+end
+
+function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+
 end
 
 function getComboName(baseName::Name, combo::Array{String})

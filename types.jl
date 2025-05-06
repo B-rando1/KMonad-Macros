@@ -60,7 +60,12 @@ end
 
 function Base.show(io::IO, p::Parens)
     if debug print(io, "Parens") end
-    print(io, "($(p.name) ")
+    print(io, "($(p.name)")
+    if p.name == "defalias"
+        print(io, "\n  ")
+    else
+        print(io, " ")
+    end
     for part in p.parts
         print(io, part)
     end

@@ -88,12 +88,13 @@ while i <= length(p.parts)
         deleteat!(p.parts, i)
         for combo in combos
             newPart = deepcopy(part)
-            U.substitute!(newPart, combo, varOrder, funcs)
+            U.sub_layer!(newPart, combo, varOrder, funcs)
             insert!(p.parts, i, newPart)
             i += 1
         end
-    # elseif part.name == "defalias"
-        # TODO
+    elseif part.name == "defalias"
+        U.sub_alias!(part, combos, varOrder, funcs)
+        i += 1
     else
         i += 1
         continue
