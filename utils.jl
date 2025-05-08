@@ -135,7 +135,7 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
                 subPart.text = combo[varIdx]
             elseif haskey(funcs, subPart.text)
                 subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
-            elseif startswith(subPart.text, '@')
+            elseif startswith(subPart.text, '@') && subPart.text != "@"
                 subPart.text = getComboName(subPart.text, combo)
             end
         elseif typeof(subPart) == TP.Parens
