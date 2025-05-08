@@ -1,6 +1,6 @@
 module Types
 
-export Component, Program, WhiteSpace, Comment, Parens, Text
+export Component, Program, WhiteSpace, Comment, Parens, Text, addToLine
 
 #=
     Declare Datatypes
@@ -29,7 +29,7 @@ function Base.show(io::IO, p::Program)
     if debug println(io, ")") end
 end
 
-struct WhiteSpace<:Component
+mutable struct WhiteSpace<:Component
     contents :: AbstractString
 end
 
@@ -52,16 +52,16 @@ end
 mutable struct Parens<:Component
     name :: AbstractString
     parts :: AbstractArray{<:Component}
-    after :: Union{WhiteSpace, Nothing}
+    after :: WhiteSpace
 end
 function Parens(name::AbstractString, parts::AbstractArray{<:Component})
-    return Parens(name, parts, nothing)
+    return Parens(name, parts, WhiteSpace(""))
 end
 
 function Base.show(io::IO, p::Parens)
     if debug print(io, "Parens") end
     print(io, "($(p.name)")
-    if p.name == "defalias"
+    if p.name in ["defalias", "defsrc", "defcfg"]
         print(io, "\n  ")
     else
         print(io, " ")
@@ -77,10 +77,10 @@ end
 
 mutable struct Text<:Component
     text :: AbstractString
-    after :: Union{WhiteSpace, Nothing}
+    after :: WhiteSpace
 end
 function Text(text::AbstractString)
-    return Text(text, nothing)
+    return Text(text, WhiteSpace(""))
 end
 
 function Base.show(io::IO, c::Text)
@@ -90,6 +90,14 @@ function Base.show(io::IO, c::Text)
         print(io, c.after)
     end
     if debug println(io, ")") end
+end
+
+function addToLine(w::WhiteSpace, s::AbstractString)
+    if contains(s, "\n")
+       w.contents = s
+    else
+        w.contents *= s
+    end
 end
 
 end

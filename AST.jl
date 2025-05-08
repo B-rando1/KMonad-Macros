@@ -39,8 +39,7 @@ function parens()
     while !isnothing(SC.sym) && typeof(SC.sym) != SC.RParen
         if typeof(SC.sym) == SC.WhiteSpace
             if !isnothing(prevPart)
-                prevPart.after = TP.WhiteSpace(SC.sym.contents)
-                prevPart = nothing
+                TP.addToLine(prevPart.after, SC.sym.contents)
             end
         elseif typeof(SC.sym) == SC.Comment
         elseif typeof(SC.sym) == SC.Text

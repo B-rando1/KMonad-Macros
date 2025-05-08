@@ -62,7 +62,18 @@ function setFuncs(parens::TP.Parens)
 end
 
 function intersperse(a::Array{T}, e::T) where T
-    return vcat(collect(Iterators.flatmap(x -> T[x, e], a[begin:end-1])), a[end])::Array{T}
+    if length(a) == 0
+        return T[]
+    end
+    output = T[a[1]]
+    if length(a) == 1
+        return output
+    end
+    for v in a[2:end]
+        push!(output, e)
+        push!(output, v)
+    end
+    return output
 end
 
 function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})

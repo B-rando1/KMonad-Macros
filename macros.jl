@@ -8,9 +8,10 @@ import .Types as TP
 import .Utils as U
 using .Utils: Type, Value, Name
 
-file_path = "keymap_test.kbd.tpl"
+infile = ARGS[1]
+outfile = ARGS[2]
 
-open(file_path) do file_handle
+open(infile) do file_handle
     global input = read(file_handle, String)
 end
 
@@ -71,7 +72,7 @@ for (func, mappings) in pairs(funcs)
     end
 end
 
-# Make multiple copies of deflayer's
+# Make multiple copies of deflayer's and defaliases
 combos = U.getCombinations(types, vars, varOrder)
 i = 1
 while i <= length(p.parts)
@@ -106,6 +107,6 @@ p.parts = U.intersperse(p.parts, TP.WhiteSpace("\n\n"))
 push!(p.parts, TP.WhiteSpace("\n"))
 
 #  Write out file contents
-open("keymap_test_output.kbd", "w") do file_handle
+open(outfile, "w") do file_handle
     show(file_handle, p)
 end
