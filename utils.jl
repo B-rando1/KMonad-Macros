@@ -103,10 +103,6 @@ function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Arra
         alias = part.parts[j]
         deleteat!(part.parts, i)
         deleteat!(part.parts, i)
-        
-        # TODO: only make multiple copies if alias refers to variables or layers
-        # This would be a lot of work, since then everything referring to an alias would need to know if the alias is parameterized
-        # What might work is processing all the aliases before all the layers
 
         for combo in combos
             newName = TP.Text(getComboName(name.text, combo), name.after)
@@ -145,7 +141,6 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
 end
 
 function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
-    #TODO: take in functions too in order to only return combinations that can be reached
     if length(varOrder) == 0
         return [[]]
     end
