@@ -1,33 +1,11 @@
 module Types
 
-export Component, Program, WhiteSpace, Comment, Parens, Text, addToLine
+export Component, Program, WhiteSpace, Parens, Text, addToAfter
 
-#=
-    Declare Datatypes
-    - Whitespace: space, tab, newline
-    - Comments
-        - Single line: ;; ...
-        - Multi line: #| ... |#
-    - Constructs:
-        - deflayer: \(deflayer ...* \)
-        - defalias: \(defalias (\n id \( ...* \))* \)
-=#
-
+# Variable to print out extra information
 debug = false
 
 abstract type Component end
-
-mutable struct Program
-    parts :: AbstractArray{<:Component}
-end
-
-function Base.show(io::IO, p::Program)
-    if debug print(io, "Program (") end
-    for part in p.parts
-        print(io, part)
-    end
-    if debug println(io, ")") end
-end
 
 mutable struct WhiteSpace<:Component
     contents :: AbstractString
@@ -36,16 +14,6 @@ end
 function Base.show(io::IO, w::WhiteSpace)
     if debug print(io, "WhiteSpace (") end
     print(io, w.contents)
-    if debug println(io, ")") end
-end
-
-struct Comment<:Component
-    contents :: AbstractString
-end
-
-function Base.show(io::IO, c::Comment)
-    if debug print(io, "Comment (") end
-    print(io, c.contents)
     if debug println(io, ")") end
 end
 
@@ -92,12 +60,25 @@ function Base.show(io::IO, c::Text)
     if debug println(io, ")") end
 end
 
-function addToLine(w::WhiteSpace, s::AbstractString)
+# A function to add more whitespace to a whitespace component. Limits whitespace to 1 newline, as this is a good readability heuristic
+function addToAfter(w::WhiteSpace, s::AbstractString)
     if contains(s, "\n")
        w.contents = s
     else
         w.contents *= s
     end
+end
+
+mutable struct Program
+    parts :: AbstractArray{Parens}
+end
+
+function Base.show(io::IO, p::Program)
+    if debug print(io, "Program (") end
+    for part in p.parts
+        print(io, part)
+    end
+    if debug println(io, ")") end
 end
 
 end

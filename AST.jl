@@ -5,15 +5,17 @@ export program
 import ..Types as TP
 import ..Scanner as SC
 
-function program(s::AbstractString)
+function program(s::AbstractString)::TP.Program
 
     SC.init(s)
-    global parts = TP.Component[]
+    global parts = TP.Parens[]
     SC.getSym()
 
     while !isnothing(SC.sym)
         if typeof(SC.sym) == SC.WhiteSpace
+            # Do nothing
         elseif typeof(SC.sym) == SC.Comment
+            # Do nothing
         elseif typeof(SC.sym) == SC.LParen
             push!(parts, parens())
         else
@@ -25,7 +27,7 @@ function program(s::AbstractString)
     return TP.Program(parts)
 end
 
-function parens()
+function parens()::TP.Parens
     parts = TP.Component[]
     prevPart = nothing
 
@@ -38,10 +40,12 @@ function parens()
 
     while !isnothing(SC.sym) && typeof(SC.sym) != SC.RParen
         if typeof(SC.sym) == SC.WhiteSpace
+            # For readability, append whitespace to the previous element
             if !isnothing(prevPart)
-                TP.addToLine(prevPart.after, SC.sym.contents)
+                TP.addToAfter(prevPart.after, SC.sym.contents)
             end
         elseif typeof(SC.sym) == SC.Comment
+            # Do nothing
         elseif typeof(SC.sym) == SC.Text
             prevPart = TP.Text(SC.sym.text)
             push!(parts, prevPart)

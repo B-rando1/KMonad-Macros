@@ -12,29 +12,24 @@ infile = ARGS[1]
 outfile = ARGS[2]
 
 open(infile) do file_handle
-    global input = read(file_handle, String)
+    global progText = read(file_handle, String)
 end
 
-# Get the AST
-p = AST.program(input);
+## Get the AST
+p = AST.program(progText);
 
-# Get the types, values, and functions
+## Get the types, values, and functions
 types = Dict{Type, Array{Value}}()
 vars = Dict{Name, Type}()
 funcs = Dict{Name, Dict{Name, Value}}()
 varOrder::Array{Name} = Name[]
 
+# Loop through the program to find them, deleting along the way
 i = 1
 while i <= length(p.parts)
     global i
     part = p.parts[i]
-
-    if typeof(part) == TP.WhiteSpace || typeof(part) == TP.Comment
-        i += 1
-        continue
-    end
     
-    # Assume Parens
     if part.name == "deftypes"
         merge!(types, U.setTypes(part))
         deleteat!(p.parts, i)
@@ -52,6 +47,7 @@ while i <= length(p.parts)
     end
 end
 
+# Used to ensure names add variables in the same order
 varOrder = collect(keys(vars))
 
 # Verify that variables use valid types and functions use valid types and variables
@@ -72,19 +68,13 @@ for (func, mappings) in pairs(funcs)
     end
 end
 
-# Make multiple copies of deflayer's and defaliases
-combos = U.getCombinations(types, vars, varOrder)
+## Make multiple copies of deflayer's and defaliases
+combos = U.getCombos(types, vars, varOrder)
 i = 1
 while i <= length(p.parts)
     global i
     part = p.parts[i]
 
-    if typeof(part) == TP.WhiteSpace || typeof(part) == TP.Comment
-        i += 1
-        continue
-    end
-
-    # Assume parens, make copies
     if part.name == "deflayer"
         deleteat!(p.parts, i)
         for combo in combos
@@ -94,7 +84,7 @@ while i <= length(p.parts)
             i += 1
         end
     elseif part.name == "defalias"
-        U.sub_alias!(part, combos, varOrder, funcs)
+        U.sub_aliases!(part, combos, varOrder, funcs)
         i += 1
     else
         i += 1
@@ -102,9 +92,12 @@ while i <= length(p.parts)
     end
 end
 
+## Cleanup and output
 # Add whitespace back to the program
-p.parts = U.intersperse(p.parts, TP.WhiteSpace("\n\n"))
-push!(p.parts, TP.WhiteSpace("\n"))
+for part in p.parts[begin:end-1]
+    part.after.contents = "\n\n"
+end
+p.parts[end].after.contents = "\n"
 
 #  Write out file contents
 open(outfile, "w") do file_handle

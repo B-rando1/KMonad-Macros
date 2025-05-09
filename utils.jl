@@ -1,6 +1,6 @@
 module Utils
 
-export Type, Value, Name, setTypes, setVars, setFuncs, getCombinations, intersperse, sub_layer!, sub_alias!, getComboName
+export Type, Value, Name, setTypes, setVars, setFuncs, getCombos, sub_layer!, sub_aliases!, getComboName
 
 import ..Types as TP
 
@@ -9,7 +9,8 @@ Type = String
 Value = String
 Name = String
 
-function setTypes(parens::TP.Parens)
+# Finds a mapping of types to list of allowed values, given a deftypes Parens block
+function setTypes(parens::TP.Parens)::Dict{Type, Array{Value}}
     types = Dict{Type, Array{Value}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
@@ -28,7 +29,8 @@ function setTypes(parens::TP.Parens)
     return types
 end
 
-function setVars(parens::TP.Parens)
+# Finds a mapping of variable names to type, given a defvars Parens block
+function setVars(parens::TP.Parens)::Dict{Name, Type}
     vars = Dict{Name, Type}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
@@ -40,7 +42,8 @@ function setVars(parens::TP.Parens)
     return vars
 end
 
-function setFuncs(parens::TP.Parens)
+# Finds a mapping of function names to mapping of variables to updated values, given a deffuncs block
+function setFuncs(parens::TP.Parens)::Dict{Name, Dict{Name, Value}}
     funcs = Dict{Name, Dict{Name, Value}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
@@ -61,21 +64,7 @@ function setFuncs(parens::TP.Parens)
     return funcs
 end
 
-function intersperse(a::Array{T}, e::T) where T
-    if length(a) == 0
-        return T[]
-    end
-    output = T[a[1]]
-    if length(a) == 1
-        return output
-    end
-    for v in a[2:end]
-        push!(output, e)
-        push!(output, v)
-    end
-    return output
-end
-
+# Given a deflayer block (and lots of other state), substitutes names with their variable-dependent counterpart
 function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     baseName = part.parts[1].text
     # Rename part
@@ -96,7 +85,8 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
     end
 end
 
-function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+# Given a defalias block (and lots of other state), expands each alias declaration
+function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     i, j = 1, 2
     while j <= length(part.parts)
         name = part.parts[i]
@@ -119,6 +109,7 @@ function sub_alias!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Arra
     end
 end
 
+# Given a nested Parens block (and lots of other state), substitutes names with their variable-dependent counterpart
 function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
@@ -140,7 +131,8 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
     end
 end
 
-function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
+# Finds all combinations of the variables
+function getCombos(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
     if length(varOrder) == 0
         return [[]]
     end
@@ -148,17 +140,19 @@ function getCombinations(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}
         var = varOrder[1]
         return [[val] for val in types[vars[var]]]
     end
-    currCombos = getCombinations(types, vars, [varOrder[1]])
-    nextCombos = getCombinations(types, vars, varOrder[2:end])
+    currCombos = getCombos(types, vars, [varOrder[1]])
+    nextCombos = getCombos(types, vars, varOrder[2:end])
 
     return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
 
-function getComboName(baseName::Name, combo::Array{String})
+# Finds the name of a construct, given its base name and the relevant combo
+function getComboName(baseName::Name, combo::Array{String})::String
     return baseName * reduce(*, intersperse(combo, ","))
 end
 
-function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name, Value})
+# For expanding a function: finds the combo name, given the current layer base name, the current combo, and the variable changes in the function.
+function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name, Value})::String
     newCombo = copy(combo)
     for i in eachindex(newCombo)
         if haskey(mapping, varOrder[i])
@@ -166,6 +160,22 @@ function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}
         end
     end
     return getComboName(baseName, newCombo)
+end
+
+# Helper function to return an array that is e inserted between each of the elements of a
+function intersperse(a::Array{T}, e::T) where T
+    if length(a) == 0
+        return T[]::Array{T}
+    end
+    output = T[a[1]]
+    if length(a) == 1
+        return output::Array{T}
+    end
+    for v in a[2:end]
+        push!(output, e)
+        push!(output, v)
+    end
+    return output::Array{T}
 end
 
 end

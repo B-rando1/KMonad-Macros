@@ -4,6 +4,7 @@ export init, getSym, mark, WhiteSpace, Comment, LParen, RParen, Text
 
 abstract type Symbol end
 
+# Define datatypes
 struct WhiteSpace <: Symbol
     contents :: AbstractString
 end
@@ -16,6 +17,36 @@ struct Text <: Symbol
     text :: AbstractString
 end
 
+#= Starts the scanner. Sets the following values:
+- str      : the string representation of the program
+- len      : the length of str
+- pos      : the current position of the cursor in the program
+- char     : the character currently under the cursor, i.e. str[pos]
+- nextChar : the character one ahead of the cursor, i.e. str[pos+1]
+- sym      : the current symbol processed
+=#
+function init(s::String)
+    global str = s
+    global len = length(str)
+    global pos = 1
+    global char = ' '
+    global nextChar = ' '
+    global sym = nothing
+    getChar()
+end
+
+# Throws an error with information about location of the error
+function mark(s::AbstractString)
+    brokenCode = str[1:pos]
+    line = count(c -> c == '\n', brokenCode)
+    position = 0
+    if line > 0
+        pos - findlast('\n', brokenCode)
+    end
+    throw("Error at line $line, position $position: $s\nsym = $sym")
+end
+
+# Gets the next character and updates various state information
 function getChar()
     global pos, char, nextChar
     if pos > len
@@ -31,26 +62,7 @@ function getChar()
     pos += 1
 end
 
-function mark(s::AbstractString)
-    brokenCode = str[1:pos]
-    line = count(c -> c == '\n', brokenCode)
-    position = 0
-    if line > 0
-        pos - findlast('\n', brokenCode)
-    end
-    throw("Error at line $line, position $position: $s\nsym = $sym")
-end
-
-function init(s::String)
-    global str = s
-    global len = length(str)
-    global pos = 1
-    global char = ' '
-    global nextChar = ' '
-    global sym = nothing
-    getChar()
-end
-
+# Gets the next symbol
 function getSym()
     global sym
     if isnothing(char)
@@ -72,7 +84,8 @@ function getSym()
     end
 end
 
-function whitespace()
+# Finds the contents of a WhiteSpace symbol
+function whitespace()::WhiteSpace
     start = pos - 1
     while !isnothing(char) && isspace(char)
         getChar()
@@ -80,7 +93,8 @@ function whitespace()
     return WhiteSpace(str[start:pos-2])
 end
 
-function sComment()
+# Finds the contents of a single-line Comment symbol
+function sComment()::Comment
     start = pos - 1
 
     # Assume that first two chars are ";;"
@@ -92,7 +106,8 @@ function sComment()
     return Comment(str[start:pos-2])
 end
 
-function mComment()
+# Finds the contents of a multi-line Comment symbol
+function mComment()::Comment
     start = pos - 1
     
     # Assume that first two chars are "#|"
@@ -106,7 +121,8 @@ function mComment()
     return Comment(str[start:pos-2])
 end
 
-function text()
+# Finds the contents of a Text symbol
+function text()::Text
     start = pos - 1
     while !isnothing(char) && !isspace(char) && char != '(' && char != ')'
         if char == '\\'
