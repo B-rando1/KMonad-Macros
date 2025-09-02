@@ -6,15 +6,15 @@ abstract type Symbol end
 
 # Define datatypes
 struct WhiteSpace <: Symbol
-    contents :: AbstractString
+    contents::AbstractString
 end
 struct Comment <: Symbol
-    contents :: AbstractString
+    contents::AbstractString
 end
 struct LParen <: Symbol end
 struct RParen <: Symbol end
 struct Text <: Symbol
-    text :: AbstractString
+    text::AbstractString
 end
 
 #= Starts the scanner. Sets the following values:
@@ -57,7 +57,7 @@ function getChar()
     if pos + 1 > len
         nextChar = nothing
     else
-        nextChar = str[pos + 1]
+        nextChar = str[pos+1]
     end
     pos += 1
 end
@@ -109,7 +109,7 @@ end
 # Finds the contents of a multi-line Comment symbol
 function mComment()::Comment
     start = pos - 1
-    
+
     # Assume that first two chars are "#|"
     getChar()
     getChar()

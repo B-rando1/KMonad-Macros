@@ -10,8 +10,8 @@ Value = String
 Name = String
 
 # Finds a mapping of types to list of allowed values, given a deftypes Parens block
-function setTypes(parens::TP.Parens)::Dict{Type, Array{Value}}
-    types = Dict{Type, Array{Value}}()
+function setTypes(parens::TP.Parens)::Dict{Type,Array{Value}}
+    types = Dict{Type,Array{Value}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
             continue
@@ -30,8 +30,8 @@ function setTypes(parens::TP.Parens)::Dict{Type, Array{Value}}
 end
 
 # Finds a mapping of variable names to type, given a defvars Parens block
-function setVars(parens::TP.Parens)::Dict{Name, Type}
-    vars = Dict{Name, Type}()
+function setVars(parens::TP.Parens)::Dict{Name,Type}
+    vars = Dict{Name,Type}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
             continue
@@ -43,14 +43,14 @@ function setVars(parens::TP.Parens)::Dict{Name, Type}
 end
 
 # Finds a mapping of function names to mapping of variables to updated values, given a deffuncs block
-function setFuncs(parens::TP.Parens)::Dict{Name, Dict{Name, Value}}
-    funcs = Dict{Name, Dict{Name, Value}}()
+function setFuncs(parens::TP.Parens)::Dict{Name,Dict{Name,Value}}
+    funcs = Dict{Name,Dict{Name,Value}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
             continue
         end
         func = entry.name
-        mappings = Dict{Name, Value}()
+        mappings = Dict{Name,Value}()
         for mapping in entry.parts
             if typeof(mapping) != TP.Parens
                 continue
@@ -65,7 +65,7 @@ function setFuncs(parens::TP.Parens)::Dict{Name, Dict{Name, Value}}
 end
 
 # Given a deflayer block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
     baseName = part.parts[1].text
     # Rename part
     part.parts[1].text = getComboName(baseName, combo)
@@ -86,7 +86,7 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
 end
 
 # Given a defalias block (and lots of other state), expands each alias declaration
-function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
     i, j = 1, 2
     while j <= length(part.parts)
         name = part.parts[i]
@@ -103,14 +103,15 @@ function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Ar
                 sub_parens!(newAlias, combo, varOrder, funcs)
             end
             insert!(part.parts, j, newAlias)
-            i += 2; j += 2
+            i += 2
+            j += 2
         end
         part.parts[end].after = TP.WhiteSpace("\n")
     end
 end
 
 # Given a nested Parens block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name, Dict{Name, Value}})
+function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
         return
@@ -132,7 +133,7 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
 end
 
 # Finds all combinations of the variables
-function getCombos(types::Dict{Type, Array{Value}}, vars::Dict{Name, Type}, varOrder::Array{Name})::Array{Array{String}}
+function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name})::Array{Array{String}}
     if length(varOrder) == 0
         return [[]]
     end
@@ -152,7 +153,7 @@ function getComboName(baseName::Name, combo::Array{String})::String
 end
 
 # For expanding a function: finds the combo name, given the current layer base name, the current combo, and the variable changes in the function.
-function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name, Value})::String
+function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name,Value})::String
     newCombo = copy(combo)
     for i in eachindex(newCombo)
         if haskey(mapping, varOrder[i])

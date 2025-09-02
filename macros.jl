@@ -19,9 +19,9 @@ end
 p = AST.program(progText);
 
 ## Get the types, values, and functions
-types = Dict{Type, Array{Value}}()
-vars = Dict{Name, Type}()
-funcs = Dict{Name, Dict{Name, Value}}()
+types = Dict{Type,Array{Value}}()
+vars = Dict{Name,Type}()
+funcs = Dict{Name,Dict{Name,Value}}()
 varOrder::Array{Name} = Name[]
 
 # Loop through the program to find them, deleting along the way
@@ -29,7 +29,7 @@ i = 1
 while i <= length(p.parts)
     global i
     part = p.parts[i]
-    
+
     if part.name == "deftypes"
         merge!(types, U.setTypes(part))
         deleteat!(p.parts, i)
