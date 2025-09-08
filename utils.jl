@@ -70,17 +70,20 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
     # Rename part
     part.parts[1].text = getComboName(baseName, combo)
     for subPart in part.parts[2:end]
+        currentCombo = copy(combo)
         if typeof(subPart) == TP.Text
             varIdx = findfirst(x -> x == subPart.text, varOrder)
             if !isnothing(varIdx)
-                subPart.text = combo[varIdx]
+                subPart.text = currentCombo[varIdx]
             elseif haskey(funcs, subPart.text)
-                subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
+                fnName = subPart.text
+                subPart.text = "(layer-switch $(getComboName(baseName, currentCombo, varOrder, funcs[fnName])))"
+                currentCombo = getCombo(currentCombo, varOrder, funcs[fnName])
             elseif startswith(subPart.text, '@')
-                subPart.text = getComboName(subPart.text, combo)
+                subPart.text = getComboName(subPart.text, currentCombo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_parens!(subPart, combo, varOrder, funcs)
+            sub_parens!(subPart, currentCombo, varOrder, funcs, baseName)
         end
     end
 end
@@ -111,7 +114,7 @@ function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Ar
 end
 
 # Given a nested Parens block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
+function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}}, baseName::Union{String,Nothing}=nothing)
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
         return
@@ -122,12 +125,17 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
             if !isnothing(varIdx)
                 subPart.text = combo[varIdx]
             elseif haskey(funcs, subPart.text)
-                subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[subPart.text])))"
+                if (isnothing(baseName))
+                    throw("Error: Referenced function inside alias (not supported as of yet)")
+                end
+                fnName = subPart.text
+                subPart.text = "(layer-switch $(getComboName(baseName, combo, varOrder, funcs[fnName])))"
+                combo = getCombo(combo, varOrder, funcs[fnName])
             elseif startswith(subPart.text, '@') && subPart.text != "@"
                 subPart.text = getComboName(subPart.text, combo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_parens!(subPart, combo, varOrder, funcs)
+            sub_parens!(subPart, combo, varOrder, funcs, baseName)
         end
     end
 end
@@ -147,6 +155,16 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
     return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
 
+function getCombo(combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name,Value})::Array{Value}
+    newCombo = copy(combo)
+    for i in eachindex(newCombo)
+        if haskey(mapping, varOrder[i])
+            newCombo[i] = mapping[varOrder[i]]
+        end
+    end
+    return newCombo
+end
+
 # Finds the name of a construct, given its base name and the relevant combo
 function getComboName(baseName::Name, combo::Array{String})::String
     return baseName * reduce(*, intersperse(combo, ","))
@@ -154,13 +172,7 @@ end
 
 # For expanding a function: finds the combo name, given the current layer base name, the current combo, and the variable changes in the function.
 function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name,Value})::String
-    newCombo = copy(combo)
-    for i in eachindex(newCombo)
-        if haskey(mapping, varOrder[i])
-            newCombo[i] = mapping[varOrder[i]]
-        end
-    end
-    return getComboName(baseName, newCombo)
+    return getComboName(baseName, getCombo(combo, varOrder, mapping))
 end
 
 # Helper function to return an array that is e inserted between each of the elements of a
