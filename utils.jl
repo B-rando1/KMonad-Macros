@@ -83,7 +83,7 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
                 subPart.text = getComboName(subPart.text, currentCombo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_parens!(subPart, currentCombo, varOrder, funcs, baseName)
+            currentCombo = sub_parens!(subPart, currentCombo, varOrder, funcs, baseName)
         end
     end
 end
@@ -114,10 +114,10 @@ function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Ar
 end
 
 # Given a nested Parens block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}}, baseName::Union{String,Nothing}=nothing)
+function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}}, baseName::Union{String,Nothing}=nothing)::Array{Value}
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
-        return
+        return combo
     end
     for subPart in part.parts
         if typeof(subPart) == TP.Text
@@ -135,9 +135,10 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
                 subPart.text = getComboName(subPart.text, combo)
             end
         elseif typeof(subPart) == TP.Parens
-            sub_parens!(subPart, combo, varOrder, funcs, baseName)
+            combo = sub_parens!(subPart, combo, varOrder, funcs, baseName)
         end
     end
+    return combo
 end
 
 # Finds all combinations of the variables
