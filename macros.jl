@@ -69,7 +69,7 @@ for (func, mappings) in pairs(funcs)
 end
 
 ## Make multiple copies of deflayer's and defaliases
-combos = U.getCombos(types, vars, varOrder)
+combos = U.getCombos(types, vars, varOrder, funcs)
 i = 1
 while i <= length(p.parts)
     global i

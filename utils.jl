@@ -142,7 +142,40 @@ function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}
 end
 
 # Finds all combinations of the variables
-function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name})::Array{Array{String}}
+struct VarFuncInfo
+    vars::Array{Name}
+    funcs::Set{Name}
+end
+function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})::Array{Array{String}}
+
+    # Start WIP tracking variable change correlations
+    varFuncs::Array{VarFuncInfo} = []
+    for var in varOrder
+        funcsForVar::Set{Name} = Set()
+        for func in keys(funcs)
+            if var in keys(funcs[func])
+                push!(funcsForVar, func)
+            end
+        end
+
+        match = false
+        for varFuncInfo in varFuncs
+            if issetequal(varFuncInfo.funcs, funcsForVar)
+                match = true
+                push!(varFuncInfo.vars, var)
+            end
+        end
+
+        if !match
+            varFuncInfo = VarFuncInfo([var], funcsForVar)
+            push!(varFuncs, varFuncInfo)
+        end
+    end
+    # End WIP
+    return getCombos_rec(types, vars, varOrder, funcs)
+end
+
+function getCombos_rec(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})::Array{Array{String}}
     if length(varOrder) == 0
         return [[]]
     end
@@ -150,8 +183,8 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
         var = varOrder[1]
         return [[val] for val in types[vars[var]]]
     end
-    currCombos = getCombos(types, vars, [varOrder[1]])
-    nextCombos = getCombos(types, vars, varOrder[2:end])
+    currCombos = getCombos_rec(types, vars, varOrder[1:1], funcs)
+    nextCombos = getCombos_rec(types, vars, varOrder[2:end], funcs)
 
     return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
