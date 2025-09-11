@@ -146,10 +146,13 @@ struct VarFuncInfo
     vars::Array{Name}
     funcs::Set{Name}
 end
+struct VarsVals
+    vars::Array{Name}
+    vals::Array{Array{Value}}
+end
 function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})::Array{Array{String}}
 
-    # Start WIP tracking variable change correlations
-    varFuncs::Array{VarFuncInfo} = []
+    varFuncInfos::Array{VarFuncInfo} = []
     for var in varOrder
         funcsForVar::Set{Name} = Set()
         for func in keys(funcs)
@@ -159,7 +162,7 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
         end
 
         match = false
-        for varFuncInfo in varFuncs
+        for varFuncInfo in varFuncInfos
             if issetequal(varFuncInfo.funcs, funcsForVar)
                 match = true
                 push!(varFuncInfo.vars, var)
@@ -168,23 +171,52 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
 
         if !match
             varFuncInfo = VarFuncInfo([var], funcsForVar)
-            push!(varFuncs, varFuncInfo)
+            push!(varFuncInfos, varFuncInfo)
         end
     end
-    # End WIP
-    return getCombos_rec(types, vars, varOrder, funcs)
+
+    varsVals_list::Array{VarsVals} = []
+    for varFuncInfo in varFuncInfos
+        varsVals = VarsVals(varFuncInfo.vars, [map(var -> types[vars[var]][1], varFuncInfo.vars)])
+        for func in varFuncInfo.funcs
+            vals = map(var -> funcs[func][var], varFuncInfo.vars)
+            match = false
+            for existingVals in varsVals.vals
+                if issetequal(existingVals, vals)
+                    match = true
+                    break
+                end
+            end
+            if !match
+                push!(varsVals.vals, vals)
+            end
+        end
+        push!(varsVals_list, varsVals)
+    end
+
+    combos = getCombos_rec(varsVals_list)
+    realCombos::Array{Array{Value}} = []
+    for combo in combos
+        realCombo::Array{Value} = []
+        for var in varOrder
+            varsValsIdxOuter = findfirst(varsVals -> var in varsVals.vars, varsVals_list)
+            varsValsIdxInner = findfirst(varsVals_var -> var == varsVals_var, varsVals_list[varsValsIdxOuter].vars)
+            push!(realCombo, combo[varsValsIdxOuter][varsValsIdxInner])
+        end
+        push!(realCombos, realCombo)
+    end
+    return realCombos
 end
 
-function getCombos_rec(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})::Array{Array{String}}
-    if length(varOrder) == 0
-        return [[]]
+function getCombos_rec(varsVals_list::Array{VarsVals})::Array{Array{Array{Value}}}
+    if length(varsVals_list) == 0
+        return []
     end
-    if length(varOrder) == 1
-        var = varOrder[1]
-        return [[val] for val in types[vars[var]]]
+    if length(varsVals_list) == 1
+        return [[vals] for vals in varsVals_list[1].vals]
     end
-    currCombos = getCombos_rec(types, vars, varOrder[1:1], funcs)
-    nextCombos = getCombos_rec(types, vars, varOrder[2:end], funcs)
+    currCombos = getCombos_rec(varsVals_list[1:1])
+    nextCombos = getCombos_rec(varsVals_list[2:end])
 
     return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
