@@ -1,6 +1,6 @@
 module Types
 
-export Component, Program, WhiteSpace, Parens, Text, addToAfter
+export Component, Program, WhiteSpace, Parens, Text, addToAfter, componentEquals, componentToString
 
 # Variable to print out extra information
 debug = false
@@ -93,6 +93,61 @@ function Base.show(io::IO, p::Program)
     if debug
         println(io, ")")
     end
+end
+
+function componentEquals(c1::Component, c2::Component)::Bool
+    # Components of different type are not equal,
+    # And WhiteSpace components are not equal.
+    if typeof(c1) != typeof(c2)
+        return false
+    end
+
+    if typeof(c1) == WhiteSpace
+        return c1.contents == c2.contents
+    end
+
+    if typeof(c1) == Text
+        return c1.text == c2.text
+    end
+
+    if typeof(c1) == Parens
+        if c1.name != c2.name || length(c1.parts) != length(c2.parts)
+            return false
+        end
+        for i in 1:length(c1.parts)
+            if !(componentEquals(c1.parts[i], c2.parts[i]))
+                return false
+            end
+        end
+        return true
+    end
+end
+
+function componentToString(c::Component)::String
+    if typeof(c) == Text
+        s = c.text
+        # Uncomment when we switch to identifiers:
+        # if !isnothing(c.after)
+        #     s *= componentToString(c.after)
+        # end
+        return s
+    end
+    if typeof(c) == Parens
+        s = "($(c.name) "
+        for part in c.parts
+            s *= componentToString(part)
+        end
+        s *= ")"
+        # Uncomment when we switch to identifiers:
+        # if !isnothing(c.after)
+        #     s *= componentToString(c.after)
+        # end
+        return s
+    end
+    if typeof(c) == WhiteSpace
+        return c.contents
+    end
+    return ""
 end
 
 end

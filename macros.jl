@@ -6,7 +6,7 @@ include("utils.jl")
 import .AST as AST
 import .Types as TP
 import .Utils as U
-using .Utils: Type, Value, Name
+using .Utils: Type, Name
 
 infile = ARGS[1]
 outfile = ARGS[2]
@@ -19,9 +19,9 @@ end
 p = AST.program(progText);
 
 ## Get the types, values, and functions
-types = Dict{Type,Array{Value}}()
+types = Dict{Type,Array{TP.Component}}()
 vars = Dict{Name,Type}()
-funcs = Dict{Name,Dict{Name,Value}}()
+funcs = Dict{Name,Dict{Name,TP.Component}}()
 varOrder::Array{Name} = Name[]
 
 # Loop through the program to find types, vars, and funcs, deleting along the way
@@ -62,7 +62,7 @@ for (func, mappings) in pairs(funcs)
         if !haskey(vars, var)
             throw("Error: function $func references non-existent variable $var")
         end
-        if !(val in types[vars[var]])
+        if !any(c -> TP.componentEquals(val, c), types[vars[var]])
             throw("Error: function $func sets variable $var to invalid value $val")
         end
     end

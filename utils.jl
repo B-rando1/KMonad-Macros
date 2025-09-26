@@ -1,30 +1,29 @@
 module Utils
 
-export Type, Value, Name, setTypes, setVars, setFuncs, getCombos, sub_layer!, sub_aliases!, getComboName
+export Type, Name, setTypes, setVars, setFuncs, getCombos, sub_layer!, sub_aliases!, getComboName
 
 import ..Types as TP
 
 # Declare types
 Type = String
-Value = String
 Name = String
 
 # Finds a mapping of types to list of allowed values, given a deftypes Parens block
-function setTypes(parens::TP.Parens)::Dict{Type,Array{Value}}
-    types = Dict{Type,Array{Value}}()
+function setTypes(parens::TP.Parens)::Dict{Type,Array{TP.Component}}
+    types = Dict{Type,Array{TP.Component}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
             continue
         end
 
         type = entry.name
-        values = Value[]
+        parts = TP.Component[]
 
-        for value in entry.parts
-            push!(values, value.text)
+        for part in entry.parts
+            push!(parts, part)
         end
 
-        types[type] = values
+        types[type] = parts
     end
     return types
 end
@@ -43,21 +42,21 @@ function setVars(parens::TP.Parens)::Dict{Name,Type}
 end
 
 # Finds a mapping of function names to mapping of variables to updated values, given a deffuncs block
-function setFuncs(parens::TP.Parens)::Dict{Name,Dict{Name,Value}}
-    funcs = Dict{Name,Dict{Name,Value}}()
+function setFuncs(parens::TP.Parens)::Dict{Name,Dict{Name,TP.Component}}
+    funcs = Dict{Name,Dict{Name,TP.Component}}()
     for entry in parens.parts
         if typeof(entry) != TP.Parens
             continue
         end
         func = entry.name
-        mappings = Dict{Name,Value}()
+        mappings = Dict{Name,TP.Component}()
         for mapping in entry.parts
             if typeof(mapping) != TP.Parens
                 continue
             end
             var = mapping.name
-            val = mapping.parts[1].text
-            mappings[var] = val
+            part = mapping.parts[1]
+            mappings[var] = part
         end
         funcs[func] = mappings
     end
@@ -65,7 +64,7 @@ function setFuncs(parens::TP.Parens)::Dict{Name,Dict{Name,Value}}
 end
 
 # Given a deflayer block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
+function sub_layer!(part::TP.Parens, combo::Array{String}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,TP.Component}})
     baseName = part.parts[1].text
     # Rename part
     part.parts[1].text = getComboName(baseName, combo)
@@ -89,7 +88,7 @@ function sub_layer!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name},
 end
 
 # Given a defalias block (and lots of other state), expands each alias declaration
-function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})
+function sub_aliases!(part::TP.Parens, combos::Array{Array{String}}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,TP.Component}})
     i, j = 1, 2
     while j <= length(part.parts)
         name = part.parts[i]
@@ -114,7 +113,7 @@ function sub_aliases!(part::TP.Parens, combos::Array{Array{Value}}, varOrder::Ar
 end
 
 # Given a nested Parens block (and lots of other state), substitutes names with their variable-dependent counterpart
-function sub_parens!(part::TP.Parens, combo::Array{Value}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}}, baseName::Union{String,Nothing}=nothing)::Array{Value}
+function sub_parens!(part::TP.Parens, combo::Array{String}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,TP.Component}}, baseName::Union{String,Nothing}=nothing)::Array{String}
     if part.name == "layer-switch"
         part.parts[1].text = getComboName(part.parts[1].text, combo)
         return combo
@@ -148,9 +147,9 @@ struct VarFuncInfo
 end
 struct VarsVals
     vars::Array{Name}
-    vals::Array{Array{Value}}
+    vals::Array{Array{String}}
 end
-function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,Value}})::Array{Array{String}}
+function getCombos(types::Dict{Type,Array{TP.Component}}, vars::Dict{Name,Type}, varOrder::Array{Name}, funcs::Dict{Name,Dict{Name,TP.Component}})::Array{Array{String}}
 
     varFuncInfos::Array{VarFuncInfo} = []
     for var in varOrder
@@ -177,9 +176,9 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
 
     varsVals_list::Array{VarsVals} = []
     for varFuncInfo in varFuncInfos
-        varsVals = VarsVals(varFuncInfo.vars, [map(var -> types[vars[var]][1], varFuncInfo.vars)])
+        varsVals = VarsVals(varFuncInfo.vars, [map(var -> TP.componentToString(types[vars[var]][1]), varFuncInfo.vars)])
         for func in varFuncInfo.funcs
-            vals = map(var -> funcs[func][var], varFuncInfo.vars)
+            vals = map(var -> TP.componentToString(funcs[func][var]), varFuncInfo.vars)
             match = false
             for existingVals in varsVals.vals
                 if issetequal(existingVals, vals)
@@ -195,9 +194,9 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
     end
 
     combos = getCombos_rec(varsVals_list)
-    realCombos::Array{Array{Value}} = []
+    realCombos::Array{Array{String}} = []
     for combo in combos
-        realCombo::Array{Value} = []
+        realCombo::Array{String} = []
         for var in varOrder
             varsValsIdxOuter = findfirst(varsVals -> var in varsVals.vars, varsVals_list)
             varsValsIdxInner = findfirst(varsVals_var -> var == varsVals_var, varsVals_list[varsValsIdxOuter].vars)
@@ -208,7 +207,7 @@ function getCombos(types::Dict{Type,Array{Value}}, vars::Dict{Name,Type}, varOrd
     return realCombos
 end
 
-function getCombos_rec(varsVals_list::Array{VarsVals})::Array{Array{Array{Value}}}
+function getCombos_rec(varsVals_list::Array{VarsVals})::Array{Array{Array{String}}}
     if length(varsVals_list) == 0
         return []
     end
@@ -221,11 +220,11 @@ function getCombos_rec(varsVals_list::Array{VarsVals})::Array{Array{Array{Value}
     return [vcat(currCombo, nextCombo) for currCombo in currCombos for nextCombo in nextCombos]
 end
 
-function getCombo(combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name,Value})::Array{Value}
+function getCombo(combo::Array{String}, varOrder::Array{Name}, mapping::Dict{Name,TP.Component})::Array{String}
     newCombo = copy(combo)
     for i in eachindex(newCombo)
         if haskey(mapping, varOrder[i])
-            newCombo[i] = mapping[varOrder[i]]
+            newCombo[i] = TP.componentToString(mapping[varOrder[i]])
         end
     end
     return newCombo
@@ -237,7 +236,7 @@ function getComboName(baseName::Name, combo::Array{String})::String
 end
 
 # For expanding a function: finds the combo name, given the current layer base name, the current combo, and the variable changes in the function.
-function getComboName(baseName::Name, combo::Array{Value}, varOrder::Array{Name}, mapping::Dict{Name,Value})::String
+function getComboName(baseName::Name, combo::Array{String}, varOrder::Array{Name}, mapping::Dict{Name,TP.Component})::String
     return getComboName(baseName, getCombo(combo, varOrder, mapping))
 end
 
